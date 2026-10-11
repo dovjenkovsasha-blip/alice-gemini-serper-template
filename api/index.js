@@ -1,10 +1,11 @@
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 const MAX_HISTORY_MESSAGES = 4;
-const MAX_HISTORY_MESSAGE_CHARS = 60;
+const MAX_HISTORY_MESSAGE_CHARS = 600;
 const MAX_ALICE_TEXT = 1024;
 const TOTAL_RESPONSE_BUDGET_MS = 3600;
 const SERPER_TIMEOUT_MS = 1800;
 const GEMINI_TIMEOUT_MS = 2500;
+const memory = new Map();
 
 const SYSTEM_PROMPT = [
   "Ты — полезный голосовой помощник в навыке Яндекс Алисы.",
@@ -215,8 +216,9 @@ export default async function handler(req, res) {
   const remainingMs = () => TOTAL_RESPONSE_BUDGET_MS - (Date.now() - startedAt);
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const text = String(body?.request?.command || body?.request?.original_utterance || "").trim();
-  const oldHistory = safeHistory(body?.state?.session?.history);
-
+  const sessionId = String(body?.session?.session_id || "");
+const oldHistory = safeHistory(memory.get(sessionId) || body?.state?.session?.history);
+ 
   if (!text) {
     return res.status(200).json(aliceResponse(
       "Привет! Я могу ответить на вопрос или найти актуальную информацию. Что хочешь узнать?",
@@ -244,7 +246,11 @@ export default async function handler(req, res) {
       { role: "user", text: text.slice(0, MAX_HISTORY_MESSAGE_CHARS) },
       { role: "model", text: answer.slice(0, MAX_HISTORY_MESSAGE_CHARS) }
     ].slice(-MAX_HISTORY_MESSAGES);
-
+    
+if (sessionId) {
+  memory.set(sessionId, history);
+  if (memory.size > 200) memory.delete(memory.keys().next().value);
+}
     return res.status(200).json(aliceResponse(answer, false, history));
   } catch (error) {
     const safeError = error?.message === "AbortError" ? "TIME_BUDGET_EXHAUSTED" : error;
