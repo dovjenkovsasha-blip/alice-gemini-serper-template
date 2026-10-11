@@ -1,6 +1,6 @@
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
-const MAX_HISTORY_MESSAGES = 8;
-const MAX_HISTORY_MESSAGE_CHARS = 1200;
+const MAX_HISTORY_MESSAGES = 4;
+const MAX_HISTORY_MESSAGE_CHARS = 150;
 const MAX_ALICE_TEXT = 1024;
 const TOTAL_RESPONSE_BUDGET_MS = 3600;
 const SERPER_TIMEOUT_MS = 600;
@@ -14,6 +14,12 @@ const SYSTEM_PROMPT = [
   "Если не знаешь ответа, честно скажи об этом."
 ].join(" ");
 
+function fitHistory(history, maxBytes = 800) {
+  const h = history.slice();
+  while (h.length >= 2 && Buffer.byteLength(JSON.stringify(h)) > maxBytes) h.splice(0, 2);
+  return h;
+}
+
 function aliceResponse(text, endSession = false, history = []) {
   return {
     version: "1.0",
@@ -21,7 +27,7 @@ function aliceResponse(text, endSession = false, history = []) {
       text: fitAliceText(text),
       end_session: endSession
     },
-    session_state: { history }
+    session_state: { history: fitHistory(history) }
   };
 }
 
