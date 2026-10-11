@@ -14,9 +14,10 @@ const SYSTEM_PROMPT = [
   "Если не знаешь ответа, честно скажи об этом."
 ].join(" ");
 
-function fitHistory(history, maxBytes = 800) {
+function fitHistory(history, maxBytes = 900) {
+  const size = v => JSON.stringify(v).replace(/[^\x00-\x7F]/g, "\\u0000").length;
   const h = history.slice();
-  while (h.length >= 2 && Buffer.byteLength(JSON.stringify(h)) > maxBytes) h.splice(0, 2);
+  while (h.length >= 2 && size(h) > maxBytes) h.splice(0, 2);
   return h;
 }
 
